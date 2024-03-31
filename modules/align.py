@@ -6,7 +6,7 @@ import functools
 from typing import List, Union
 
 from modules.seq import MySeq
-from modules.align_utils import Table, AlignResult, TraceBack, SubstMatrix, AlignResultAdaptor
+from modules.align_utils import Table, AlignResult, TraceBack, SubstMatrix
 
 class Align(ABC):
     def __init__(self, substMatrix: SubstMatrix) -> None:
@@ -216,17 +216,27 @@ class PairwiseAlign(Align):
 class ProgressiveAlign(Align):
     def __init__(self, substMatrix: SubstMatrix, gap: int) -> None:
         self.gap = gap
+        self.alignresult = None
         super().__init__(substMatrix)
+    
+    @staticmethod
+    def after_align(func):
+        @functools.wraps(func)
+        def wrapper(self, *arg, **kwargs):
+            if self.alignresult == None:
+                raise ValueError(f"method '{func.__name__}' should only be execuated after align")
+
+            return func(self, *arg, **kwargs)
+        return wrapper
 
     @staticmethod
-    def get_similar_seqpair(seqs: list[Union[MySeq, AlignResultAdaptor]]):
+    def get_similar_seqpair(seqs: list[MySeq]):
         """get index of most similar seq pair"""
         # TODO
         return 0,1
     
     def align(self, seqs: list[MySeq]) -> None:
         # TODO cleanup
-        self.alignresult = None
 
         tasks = seqs
         while len(tasks) > 1:
@@ -296,6 +306,25 @@ class ProgressiveAlign(Align):
             
         self.alignresult = tasks[0]
 
+    @after_align
     def get_align(self) -> AlignResult:
         return self.alignresult
+
+    @after_align
+    def evaluate_align(self):
+        ssp = 0 # score sum of pairs
+
+        def get_score(list_str: list[str], sm):
+            f = lambda x,y,sm: sm[x,y]
+
+            list_str = [i for i in list_str if i != "_"]
+            score = 0
+            for i in range(len(list_str)):
+                for j in range(i+1, len(list_str)):
+                    score += f(list_str[i],list_str[j], sm)
+            return score
+        
+        for i in range(len(self.alignresult)):
+            ssp += get_score(self.alignresult.column(i), self.sm)
+        return ssp
 

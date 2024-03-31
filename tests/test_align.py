@@ -31,6 +31,9 @@ seq4_case2 = [MySeq("TCAAGAG", "DNA"),
               MySeq("TCAGTT", "DNA"),
               MySeq("TCAGTAAT", "DNA")]
 
+seq4_case3 = [MySeq("ATCG", "DNA"),
+              MySeq("ATCG", "DNA")]
+
 class test_PairwiseAlign(unittest.TestCase):
 
         
@@ -138,14 +141,23 @@ class test_PairwiseAlign(unittest.TestCase):
         self.assertEqual(align.evaluate_align(), {"score": 4, "identity": 1})
 
 class test_ProgrossiveAlign(unittest.TestCase):
+    def test_after_align(self):
+        align = ProgressiveAlign(sm, -1)
+        with self.assertRaises(ValueError):
+            align.get_align()
+
     def test_align(self):
         align = ProgressiveAlign(sm, -1)
-        # align.align(seq4_case1)
-        # self.assertEqual(align.get_align().num_seqs(), 4)
+        align.align(seq4_case1)
+        self.assertEqual(align.get_align().num_seqs(), 4)
 
         align.align(seq4_case2)
-        print(align.get_align())
         self.assertEqual(align.get_align().num_seqs(), 5)
+
+    def test_evaluate_align(self):
+        align = ProgressiveAlign(sm, -1)
+        align.align(seq4_case3)
+        self.assertEqual(align.evaluate_align(), 4)
 
 if __name__ == "__main__":
      unittest.main()
