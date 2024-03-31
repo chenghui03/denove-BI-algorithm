@@ -2,17 +2,18 @@ import setwd
 
 from abc import ABC,abstractmethod
 from itertools import product
-import functools 
+import functools
+from typing import List, Union
 
 from modules.seq import MySeq
-from modules.align_utils import Table, AlignResult, TraceBack, SubstMatrix
+from modules.align_utils import Table, AlignResult, TraceBack, SubstMatrix, AlignResultAdaptor
 
 class Align(ABC):
     def __init__(self, substMatrix: SubstMatrix) -> None:
         self.sm = substMatrix
         self.seqs = []
     
-    @abstractmethod
+    # @abstractmethod
     def after_align(func):
         pass
     
@@ -24,7 +25,7 @@ class Align(ABC):
     def get_align(self):
         pass
     
-    @abstractmethod
+    # @abstractmethod
     def evaluate_align(self):
         pass
 
@@ -211,3 +212,90 @@ class PairwiseAlign(Align):
         
         return {"score":score, "identity": identity_s}
         
+
+class ProgressiveAlign(Align):
+    def __init__(self, substMatrix: SubstMatrix, gap: int) -> None:
+        self.gap = gap
+        super().__init__(substMatrix)
+
+    @staticmethod
+    def get_similar_seqpair(seqs: list[Union[MySeq, AlignResultAdaptor]]):
+        """get index of most similar seq pair"""
+        # TODO
+        return 0,1
+    
+    def align(self, seqs: list[MySeq]) -> None:
+        # TODO cleanup
+        self.alignresult = None
+
+        tasks = seqs
+        while len(tasks) > 1:
+            pair_i_seq, pair_j_seq = self.get_similar_seqpair(seqs)
+            align = PairwiseAlign(self.sm, self.gap, is_local=False)
+
+            #
+            seq_pair = []
+            seq_for_compare = [] # ["", ""]
+            seq_sequence = []
+            # seq_sequence example
+            # [
+            # [["A", "T", "C", "G"], ["A", "_", "C", "G"], ["A", "_", "_", "G"]],
+            #  ["A", "T", "C", "G"]
+            # ]
+
+            for x in [pair_i_seq, pair_j_seq]:
+                if isinstance(seqs[x], AlignResult):
+                    seq_for_align = seqs[x].consensus()
+                    seq_for_compare.append(list(seq_for_align))
+                    seq_sequence.append(list(map(list, seqs[x].seqs))) 
+
+                    seq_pair.append(MySeq(seq_for_align, seqs[x].seq_type))
+
+                elif isinstance(seqs[x], MySeq):
+                    seq_for_align = seqs[x].get_seq()
+                    seq_for_compare.append(list(seq_for_align))
+                    seq_sequence.append([list(seq_for_align)])
+
+                    seq_pair.append(MySeq(seq_for_align, seqs[x].seq_type))
+                else:
+                    raise NotImplementedError
+                
+            assert len(seq_sequence) == 2
+
+            align.align(seq_pair)
+            align_result = align.get_align()[0] # only consider the first possible align
+
+            align_len = len(align_result[0])
+
+            index = 0
+            while index < align_len:
+                for seq_i in [0,1]:
+                    try:
+                        if seq_for_compare[seq_i][index] != align_result[seq_i][index]:
+                            seq_for_compare[seq_i].insert(index, "_")
+
+                            for ii in range(len(seq_sequence[seq_i])):
+                                seq_sequence[seq_i][ii].insert(index, "_")
+
+                    except IndexError:
+                        for ii in range(len(seq_sequence[seq_i])):
+                            seq_sequence[seq_i][ii].append("_")
+
+                else:
+                    index += 1
+            
+            output_seqs = []
+            for i in range(2):
+                temp = ["".join(seq) for seq in seq_sequence[i]]
+                output_seqs.extend(temp)
+            #
+            tasks.append(AlignResult(output_seqs, seq_type=align_result.seq_type))
+
+            tasks.pop(pair_j_seq)
+            tasks.pop(pair_i_seq)
+            
+        self.alignresult = tasks[0]
+
+    def get_align(self) -> AlignResult:
+        return self.alignresult
+

@@ -4,7 +4,7 @@ import unittest
 
 from modules.seq import MySeq
 from modules.align_utils import Table, AlignResult, TraceBack, SubstMatrix
-from modules.align import PairwiseAlign
+from modules.align import PairwiseAlign, ProgressiveAlign
 
 sm = SubstMatrix.create_submat(1, -1, "ATCG")
 align = PairwiseAlign(sm, -1)
@@ -19,7 +19,17 @@ seq2_case5 = list(map(MySeq, ["ATCG","ATCG"]))
 
 # mutiple alignment
 seq3_case1 = list(map(MySeq, ["ATC", "T", "TC"]))
-    
+seq3_case2 = list(map(MySeq, ["ATCG","ATCG","ATCG"]))
+
+# 
+seq4_case1 = [AlignResult(["ATCG", "A_CG","ATCG"], "DNA"),
+              MySeq("TCG", "DNA")]
+
+seq4_case2 = [MySeq("TCAAGAG", "DNA"),
+              MySeq("TCGAA", "DNA"),
+              MySeq("TATTCG", "DNA"),
+              MySeq("TCAGTT", "DNA"),
+              MySeq("TCAGTAAT", "DNA")]
 
 class test_PairwiseAlign(unittest.TestCase):
 
@@ -127,5 +137,15 @@ class test_PairwiseAlign(unittest.TestCase):
         align.align(seq2_case5)
         self.assertEqual(align.evaluate_align(), {"score": 4, "identity": 1})
 
+class test_ProgrossiveAlign(unittest.TestCase):
+    def test_align(self):
+        align = ProgressiveAlign(sm, -1)
+        # align.align(seq4_case1)
+        # self.assertEqual(align.get_align().num_seqs(), 4)
+
+        align.align(seq4_case2)
+        print(align.get_align())
+        self.assertEqual(align.get_align().num_seqs(), 5)
+
 if __name__ == "__main__":
-    unittest.main()
+     unittest.main()
