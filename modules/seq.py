@@ -31,6 +31,9 @@ class MySeq:
     def get_biotype(self) -> str:
         return self.seq_type
     
+    def get_seq(self) -> str:
+        return self.seq
+    
     def alphabet(self) -> str|None:
         return ALPHABET.get(self.seq_type,None)
     
